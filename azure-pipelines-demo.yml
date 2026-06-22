@@ -1,0 +1,38 @@
+trigger: none
+pr: none
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: Use Python 3.12
+    inputs:
+      versionSpec: "3.12"
+
+  - script: |
+      python -m pip install --upgrade pip
+      python -m pip install -r requirements.txt
+    displayName: Install dependencies
+
+  - bash: |
+      if [ -z "$PYTEST_ENV_FILE" ]; then
+        echo "Pipeline variable PYTEST_ENV_FILE is not set"
+        exit 1
+      fi
+      printf '%s\n' "$PYTEST_ENV_FILE" > .env.demo
+    displayName: Prepare env file
+    env:
+      PYTEST_ENV_FILE: $(PYTEST_ENV_FILE)
+
+  - script: |
+      python -m pytest --env-file=.env.demo -q --junitxml=test-results/demo-results.xml
+    displayName: Run tests
+
+  - task: PublishTestResults@2
+    displayName: Publish pytest results
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: test-results/demo-results.xml
+      testRunTitle: API Tests Demo

@@ -1,0 +1,16 @@
+from tests.api.factories.data_factory import (
+    AUTOTEST_EMAIL_PREFIX,
+    AUTOTEST_RU_PREFIX,
+    build_email,
+    create_email_precreate_payload,
+    create_organization_payload,
+    create_phone_precreate_payload,
+    create_valid_inn,
+    create_valid_ogrn,
+    get_target_env,
+    get_test_email_domain,
+    unique_external_user_id,
+    unique_cleanup_email,
+    unique_email,
+    unique_phone,
+)

@@ -1,0 +1,45 @@
+name: API Tests Demo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  api-tests-demo:
+    name: Run API tests on demo
+    runs-on: ubuntu-latest
+    environment: demo
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Prepare env file
+        env:
+          PYTEST_ENV_FILE: ${{ secrets.PYTEST_ENV_FILE }}
+        run: |
+          if [ -z "$PYTEST_ENV_FILE" ]; then
+            echo "GitHub environment secret PYTEST_ENV_FILE is not set"
+            exit 1
+          fi
+          printf '%s\n' "$PYTEST_ENV_FILE" > .env.demo
+
+      - name: Run tests
+        run: |
+          python -m pytest --env-file=.env.demo -q --junitxml=test-results/demo-results.xml
+
+      - name: Upload pytest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-demo
+          path: test-results/demo-results.xml

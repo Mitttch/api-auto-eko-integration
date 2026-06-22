@@ -1,0 +1,73 @@
+﻿name: API Tests Integrity
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Pytest suite marker to run"
+        required: true
+        default: "positive_smoke"
+        type: choice
+        options:
+          - positive_smoke
+          - negative
+          - extended
+          - users_extended
+          - organizations_extended
+          - employees_extended
+          - permissions_extended
+          - auth_extended
+          - mass_extended
+          - security_extended
+          - consistency
+          - email_confirmation_extended
+          - phone_mass_extended
+          - captcha_extended
+          - integrator_extended
+          - certificates_extended
+          - all
+
+jobs:
+  api-tests-integrity:
+    name: Run API tests on integrity (${{ inputs.suite }})
+    runs-on: ubuntu-latest
+    environment: integrity
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Prepare env file
+        env:
+          PYTEST_ENV_FILE: ${{ secrets.PYTEST_ENV_FILE }}
+        run: |
+          if [ -z "$PYTEST_ENV_FILE" ]; then
+            echo "GitHub environment secret PYTEST_ENV_FILE is not set"
+            exit 1
+          fi
+          printf '%s\n' "$PYTEST_ENV_FILE" > .env.integrity
+
+      - name: Run tests
+        run: |
+          if [ "${{ inputs.suite }}" = "all" ]; then
+            python -m pytest --env-file=.env.integrity -q --junitxml=test-results/integrity-results.xml
+          else
+            python -m pytest --env-file=.env.integrity -m "${{ inputs.suite }}" -q --junitxml=test-results/integrity-results.xml
+          fi
+
+      - name: Upload pytest results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results-integrity-${{ inputs.suite }}
+          path: test-results/integrity-results.xml

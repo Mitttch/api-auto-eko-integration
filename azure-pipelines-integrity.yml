@@ -1,0 +1,66 @@
+﻿trigger: none
+pr: none
+
+parameters:
+  - name: suite
+    displayName: Pytest suite marker to run
+    type: string
+    default: positive_smoke
+    values:
+      - positive_smoke
+      - negative
+      - extended
+      - users_extended
+      - organizations_extended
+      - employees_extended
+      - permissions_extended
+      - auth_extended
+      - mass_extended
+      - security_extended
+      - consistency
+      - email_confirmation_extended
+      - phone_mass_extended
+      - captcha_extended
+      - integrator_extended
+      - certificates_extended
+      - all
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+  - task: UsePythonVersion@0
+    displayName: Use Python 3.12
+    inputs:
+      versionSpec: "3.12"
+
+  - script: |
+      python -m pip install --upgrade pip
+      python -m pip install -r requirements.txt
+    displayName: Install dependencies
+
+  - bash: |
+      if [ -z "$PYTEST_ENV_FILE" ]; then
+        echo "Pipeline variable PYTEST_ENV_FILE is not set"
+        exit 1
+      fi
+      printf '%s\n' "$PYTEST_ENV_FILE" > .env.integrity
+    displayName: Prepare env file
+    env:
+      PYTEST_ENV_FILE: $(PYTEST_ENV_FILE)
+
+  - script: |
+      if [ "${{ parameters.suite }}" = "all" ]; then
+        python -m pytest --env-file=.env.integrity -q --junitxml=test-results/integrity-results.xml
+      else
+        python -m pytest --env-file=.env.integrity -m "${{ parameters.suite }}" -q --junitxml=test-results/integrity-results.xml
+      fi
+    displayName: Run tests (${{ parameters.suite }})
+
+  - task: PublishTestResults@2
+    displayName: Publish pytest results
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: test-results/integrity-results.xml
+      testRunTitle: API Tests Integrity (${{ parameters.suite }})
