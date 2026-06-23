@@ -11,16 +11,30 @@ def normalize_certificate_skid(skid):
 
 
 def get_user_id_by_skid(api_context, api_version_params, skid):
-    response = api_context.get(
-        "/api/integrations/search",
-        params={
-            **api_version_params,
-            "skid": normalize_certificate_skid(skid),
-        },
-    )
+    normalized_skid = normalize_certificate_skid(skid)
+    skid_candidates = [normalized_skid]
+    if isinstance(skid, str):
+        lowercase_skid = skid.lower()
+        if lowercase_skid not in skid_candidates:
+            skid_candidates.append(lowercase_skid)
 
-    assert response.ok, response.text()
-    return response.json().get("userIdBySkid")
+    last_response = None
+    for skid_candidate in skid_candidates:
+        response = api_context.get(
+            "/api/integrations/search",
+            params={
+                **api_version_params,
+                "skid": skid_candidate,
+            },
+        )
+
+        assert response.ok, response.text()
+        last_response = response
+        user_id = response.json().get("userIdBySkid")
+        if user_id:
+            return user_id
+
+    return last_response.json().get("userIdBySkid")
 
 
 def wait_user_id_by_skid(api_context, api_version_params, skid, expected_user_id):
