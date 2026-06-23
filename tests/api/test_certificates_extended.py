@@ -6,12 +6,16 @@ import pytest
 from tests.api.assertions import assert_no_internal_error, assert_uuid
 
 
+def normalize_certificate_skid(skid):
+    return skid.upper() if isinstance(skid, str) else skid
+
+
 def get_user_id_by_skid(api_context, api_version_params, skid):
     response = api_context.get(
         "/api/integrations/search",
         params={
             **api_version_params,
-            "skid": skid,
+            "skid": normalize_certificate_skid(skid),
         },
     )
 
@@ -58,7 +62,7 @@ def build_mutable_ip_certificate_payload(settings):
         )
 
     return {
-        "skid": settings["mutable_ip_cert_skid"],
+        "skid": normalize_certificate_skid(settings["mutable_ip_cert_skid"]),
         "commonName": settings["mutable_ip_cert_common_name"],
         "notBefore": settings["mutable_ip_cert_not_before"],
         "notAfter": settings["mutable_ip_cert_not_after"],
@@ -103,7 +107,7 @@ def bind_mutable_ip_certificate(
 
 def reattach_certificate(api_context, api_version_params, skid, user_id):
     response = api_context.post(
-        f"/api/integrations/certificate/reattach/{skid}/{user_id}",
+        f"/api/integrations/certificate/reattach/{normalize_certificate_skid(skid)}/{user_id}",
         params=api_version_params,
     )
 
@@ -116,7 +120,7 @@ def ensure_mutable_certificate_attached_to_user(
     settings,
     user_id,
 ):
-    skid = settings["mutable_ip_cert_skid"]
+    skid = normalize_certificate_skid(settings["mutable_ip_cert_skid"])
     if not skid:
         pytest.skip("Set MUTABLE_IP_CERT_SKID to run mutable IP certificate tests")
 
@@ -161,7 +165,7 @@ def test_stable_ip_certificate_search_with_email_returns_same_user(
         "/api/integrations/search",
         params={
             **api_version_params,
-            "skid": seed_ip_user["seed_ip_cert_skid"],
+            "skid": normalize_certificate_skid(seed_ip_user["seed_ip_cert_skid"]),
             "email": seed_ip_user["email"],
         },
     )
@@ -184,7 +188,7 @@ def test_stable_ip_certificate_search_with_phone_returns_same_user(
         "/api/integrations/search",
         params={
             **api_version_params,
-            "skid": seed_ip_user["seed_ip_cert_skid"],
+            "skid": normalize_certificate_skid(seed_ip_user["seed_ip_cert_skid"]),
             "phone": seed_ip_user["phone"].lstrip("+"),
         },
     )
@@ -362,7 +366,7 @@ def test_reattach_unknown_certificate_skid_returns_client_error(
     api_version_params,
     seed_owner_2,
 ):
-    unknown_skid = uuid4().hex
+    unknown_skid = normalize_certificate_skid(uuid4().hex)
     response = api_context.post(
         f"/api/integrations/certificate/reattach/{unknown_skid}/"
         f"{seed_owner_2['seed_owner_2_user_id']}",
@@ -391,7 +395,7 @@ def test_reattach_certificate_to_unknown_user_returns_client_error(
     unknown_user_id = str(uuid4())
     response = api_context.post(
         f"/api/integrations/certificate/reattach/"
-        f"{settings['mutable_ip_cert_skid']}/{unknown_user_id}",
+        f"{normalize_certificate_skid(settings['mutable_ip_cert_skid'])}/{unknown_user_id}",
         params=api_version_params,
     )
 
